@@ -43,6 +43,24 @@ async function resolveStockMgtContext(page) {
   return context;
 }
 
+function getRowValue(row, ...keys) {
+  for (const k of keys) {
+    if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+      return String(row[k]).trim();
+    }
+  }
+  const normalizedKeys = keys.map(k => k.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  for (const prop of Object.keys(row)) {
+    const normProp = prop.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (normalizedKeys.includes(normProp)) {
+      if (row[prop] !== undefined && row[prop] !== null && String(row[prop]).trim() !== '') {
+        return String(row[prop]).trim();
+      }
+    }
+  }
+  return '';
+}
+
 export async function downloadKiaStockManagementReport(page) {
   logger.info(`${REPORT_NAME} report started`);
 
@@ -88,8 +106,14 @@ export async function downloadKiaStockManagementReport(page) {
 
   const merged = await mergeExcelFiles(exportFiles);
 
+  // Exclude rows where stock_status is 'Invoice' (case-insensitive) for kia_stock_management daily snapshot
+  const stockManagementRows = merged.rows.filter(row => {
+    const status = getRowValue(row, 'stock_status', 'Stock Status', 'Stock_Status').toLowerCase();
+    return status !== 'invoice';
+  });
+
   if (merged.rows.length > 0) {
-    const uniqueDealers = [...new Set(merged.rows.map(row => String(row.order_dealer || '').trim()).filter(Boolean))];
+    const uniqueDealers = [...new Set(merged.rows.map(row => getRowValue(row, 'order_dealer', 'Order Dealer', 'Order_Dealer', 'dealer_code')).filter(Boolean))];
     logger.info('Deduplicated dealers from exported stock dataset', {
       uniqueDealers,
       report: REPORT_NAME
@@ -105,7 +129,7 @@ export async function downloadKiaStockManagementReport(page) {
     brand: 'kia',
     sheetName: config.kiaStockManagementSheetName,
     headers: merged.headers,
-    rows: merged.rows
+    rows: stockManagementRows
   });
 
   const dbReportResult = await saveReportSheetToSupabase({

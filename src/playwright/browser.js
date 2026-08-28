@@ -41,7 +41,7 @@ export async function clearSessionState() {
   });
 }
 
-export async function createBrowserSession() {
+export async function createBrowserSession(options = {}) {
   await ensureDir(config.sessionStatePath);
   await ensureDir(config.downloadDir);
 
@@ -49,7 +49,7 @@ export async function createBrowserSession() {
   if (config.playwrightUsePersistentContext) {
     await ensureDir(config.playwrightUserDataDir);
     const context = await chromium.launchPersistentContext(config.playwrightUserDataDir, {
-      ...resolveLaunchOptions(),
+      ...resolveLaunchOptions(options),
       acceptDownloads: true,
       downloadsPath: config.downloadDir
     });
@@ -72,7 +72,7 @@ export async function createBrowserSession() {
     };
   }
 
-  const browser = await chromium.launch(resolveLaunchOptions());
+  const browser = await chromium.launch(resolveLaunchOptions(options));
 
   const context = await browser.newContext({
     acceptDownloads: true,

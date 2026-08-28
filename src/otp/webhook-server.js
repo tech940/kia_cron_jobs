@@ -41,7 +41,7 @@ function authorize(req, res, next) {
 
 function detectOtpPurpose(text, otp) {
   const value = String(text ?? '').toLowerCase();
-  if (/\b(?:hyundai|gdms)\b|mobile\s+number\s+authentication/.test(value)) {
+  if (/\b(?:hyundai|gdms|ndms)\b|mobile\s+number\s+authentication/.test(value)) {
     return 'hmil';
   }
 

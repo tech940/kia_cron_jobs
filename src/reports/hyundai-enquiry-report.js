@@ -233,7 +233,7 @@ function assertExportScopedToDealer(headers, rows, dealerCode) {
   throw error;
 }
 
-async function saveChunkRows(chunkFiles, { dealerCode, chunk, chunkDir, baseName, enforceScope = true }) {
+async function saveChunkRows(chunkFiles, { dealerCode, account, chunk, chunkDir, baseName, enforceScope = true }) {
   if (!chunkFiles.length) {
     await fs.writeFile(
       chunkMarkerPath(chunkDir, baseName),
@@ -250,9 +250,10 @@ async function saveChunkRows(chunkFiles, { dealerCode, chunk, chunkDir, baseName
 
   const enrichedDataset = addSourceDealerCodeToDataset(merged, dealerCode);
 
+  const targetSheetName = account ? account.sheetName('hyundai_enquiry_report') : 'hyundai_enquiry_report';
   const dbResult = await saveReportSheetToSupabase({
-    brand: 'hyundai',
-    sheetName: 'hyundai_enquiry_report',
+    brand: account?.brand || 'hyundai',
+    sheetName: targetSheetName,
     headers: enrichedDataset.headers,
     rows: enrichedDataset.rows
   });
@@ -375,6 +376,7 @@ export async function downloadHyundaiEnquiryReport(page, {
 
       totalRowCount += await saveChunkRows(chunkFiles ?? [], {
         dealerCode,
+        account,
         chunk,
         chunkDir,
         baseName,
@@ -418,7 +420,7 @@ export async function downloadHyundaiEnquiryReport(page, {
   return {
     name: 'Hyundai Enquiry Report',
     id: 'hyundai-enquiry-report',
-    sheetName: 'hyundai_enquiry_report',
+    sheetName: account ? account.sheetName('hyundai_enquiry_report') : 'hyundai_enquiry_report',
     dealerCode,
     rowCount: totalRowCount,
     savedChunkCount,

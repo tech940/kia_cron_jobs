@@ -7,6 +7,7 @@ import {
   getCalendarMonthRanges,
   getCurrentMonthToDateRange,
   getRollingThreeMonthRange,
+  getRollingTwelveMonthRange,
   getReportDateOverrideRange,
   parseIsoLocalDate,
   toIsoDate
@@ -59,11 +60,22 @@ function getChunkPlan({ reportId, backfillEnabled, backfillStartDate }) {
     };
   }
 
-  // Daily rolling 3-month fetch for booking, enquiry, purchase and receipt reports
-  if (reportId === 'kia-booking-report' || reportId === 'kia-enquiry-report' || reportId === 'kia-purchase-report' || reportId === 'kia-receipt-report') {
+  // Daily rolling 3-month fetch for booking, enquiry, and receipt reports
+  if (reportId === 'kia-booking-report' || reportId === 'kia-enquiry-report' || reportId === 'kia-receipt-report') {
     const rollingRange = getRollingThreeMonthRange(endDate);
     return {
       mode: 'rolling-three-months',
+      startDate: rollingRange.startDate,
+      endDate: rollingRange.endDate,
+      chunks: getCalendarMonthRanges(rollingRange.startDate, rollingRange.endDate)
+    };
+  }
+
+  // Daily rolling 12-month fetch for Claims Mgt
+  if (reportId === 'kia-claim-management') {
+    const rollingRange = getRollingTwelveMonthRange(endDate);
+    return {
+      mode: 'rolling-twelve-months',
       startDate: rollingRange.startDate,
       endDate: rollingRange.endDate,
       chunks: getCalendarMonthRanges(rollingRange.startDate, rollingRange.endDate)

@@ -34,7 +34,11 @@ function chunkFileName(chunk) {
   return `hyundai_receipt_report_${start}_to_${end}`;
 }
 
-export function getHyundaiReceiptReportChunks(today = new Date()) {
+export function getHyundaiReceiptReportChunks(today = new Date(), options = {}) {
+  if (options.startDate && options.endDate) {
+    return getThirtyDayChunks(parseIsoLocalDate(options.startDate), parseIsoLocalDate(options.endDate));
+  }
+
   const overrideRange = getReportDateOverrideRange();
   if (overrideRange) {
     return getThirtyDayChunks(overrideRange.startDate, overrideRange.endDate);
@@ -98,13 +102,13 @@ async function applyHyundaiReceiptReportChunk(reportContext, chunk) {
   await waitForKendoGridIdle(reportContext, { timeout: 120000 });
 }
 
-export async function downloadHyundaiReceiptReport(page, { dealerCode = 'active', account = null } = {}) {
-  logger.info('Hyundai Receipt Report started', { dealerCode });
+export async function downloadHyundaiReceiptReport(page, { dealerCode = 'active', account = null, startDate = null, endDate = null } = {}) {
+  logger.info('Hyundai Receipt Report started', { dealerCode, startDate, endDate });
   await openHmilReceiptReport(page);
   const reportContext = await resolveHyundaiReceiptReportContext(page);
 
   const today = new Date();
-  const chunks = getHyundaiReceiptReportChunks(today);
+  const chunks = getHyundaiReceiptReportChunks(today, { startDate, endDate });
   const runDate = toIsoDate(today);
   const reportChunksDir = account?.reportChunksDir || config.reportChunksDir;
   const chunkDir = path.join(reportChunksDir, 'hyundai-receipt-report', dealerCode, runDate);

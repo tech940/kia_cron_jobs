@@ -291,25 +291,31 @@ export const TABLE_IDENTITY_COLUMNS = {
     ['customer_mobile_no', 'booking_date', 'customer_name']
   ],
   kia_sales_report: [
+    ['dealer_code_2', 'invoice_no'],
+    ['dealer_code_2', 'invoice_number'],
+    ['dealer_code', 'dealer_code_2', 'invoice_no'],
+    ['dealer_code', 'dealer_code_2', 'invoice_number'],
     ['dealer_code', 'invoice_no'],
     ['dealer_code', 'invoice_number'],
-    ['dealer_code', 'confirm_no'],
     ['invoice_no'],
     ['invoice_number'],
-    ['confirm_no'],
-    ['vin', 'confirm_date'],
-    ['chassis_no', 'confirm_date'],
-    ['vin', 'invoice_date'],
-    ['chassis_no', 'invoice_date']
+    ['vin_number', 'invoice_date'],
+    ['vin_no', 'invoice_date']
   ],
   kia_enquiry_report: [
+    ['dealer_code_2', 'enquiry_no'],
+    ['dealer_code_2', 'enquiry_number'],
+    ['dealer_code', 'dealer_code_2', 'enquiry_no'],
+    ['dealer_code', 'dealer_code_2', 'enquiry_number'],
     ['dealer_code', 'enquiry_no'],
     ['dealer_code', 'enquiry_number'],
     ['enquiry_no'],
     ['enquiry_number'],
+    ['dealer_code_2', 'contact_number', 'enquiry_date'],
+    ['dealer_code', 'contact_number', 'enquiry_date'],
     ['dealer_code', 'mobile_no', 'enquiry_date'],
     ['dealer_code', 'customer_mobile_no', 'enquiry_date'],
-    ['mobile_no', 'enquiry_date', 'customer_name'],
+    ['mobile_no', 'enquiry_date', 'name_of_the_customer'],
     ['customer_mobile_no', 'enquiry_date', 'customer_name']
   ],
   kia_accessories_counter_sales_report: [
@@ -322,6 +328,14 @@ export const TABLE_IDENTITY_COLUMNS = {
     ['bill_no', 'part_no'],
     ['bill_no', 'part_number']
   ],
+  kia_purchase_report: [
+    ['dealer_code', 'vin_no'],
+    ['vin_no'],
+    ['dealer_code', 'kin_invoice_no'],
+    ['kin_invoice_no'],
+    ['dealer_code', 'order_no'],
+    ['order_no']
+  ],
   kia_receipt_report: [
     ['dealer_code', 'receipt_no'],
     ['dealer_code', 'receipt_number'],
@@ -331,6 +345,16 @@ export const TABLE_IDENTITY_COLUMNS = {
     ['receipt_id'],
     ['dealer_code', 'receipt_date', 'customer_name'],
     ['receipt_date', 'customer_name', 'amount']
+  ],
+  kia_calim_management: [
+    ['dealer_code', 'claim_no'],
+    ['dealer_code', 'claim_number'],
+    ['claim_no'],
+    ['claim_number'],
+    ['dealer_code', 'ro_no', 'claim_date'],
+    ['dealer_code', 'r_o_no', 'claim_date'],
+    ['ro_no', 'claim_date'],
+    ['r_o_no', 'claim_date']
   ],
   psf_yearly: [
     ['ro_no'],
@@ -449,7 +473,8 @@ export const EXACT_ROW_DEDUPE_TABLES = new Set([
   'kia_accessories_counter_sales_report',
   'kia_purchase_report',
   'kia_receipt_report',
-  'kia_stock_management'
+  'kia_stock_management',
+  'kia_calim_management'
 ]);
 
 export function tableRequiresExactRowDedupe(tableName) {

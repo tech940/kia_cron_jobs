@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { getReportDateOverrideRange, toIsoDate } from '../utils/date-range.js';
 import { createGdmsAccountProfile } from '../accounts/gdms-account-profile.js';
 import {
   openAdvWiseLubricantsVasReport,
@@ -140,10 +141,18 @@ function operationWiseReport(account) {
       id: 'hyundai-operation-wise-analysis-report',
       name: 'Hyundai Operation Wise Analysis Report',
       sheetName: account.sheetName('Hyundai Operation Wise Analysis Report'),
-      run: (page, options = {}) => runAmPlatinumOperationWiseForDealer(page, {
-        ...options,
-        account
-      })
+      run: (page, options = {}) => {
+        const overrideRange = getReportDateOverrideRange();
+        const cyRange = overrideRange ? {
+          startIso: toIsoDate(overrideRange.startDate),
+          endIso: toIsoDate(overrideRange.endDate)
+        } : undefined;
+        return runAmPlatinumOperationWiseForDealer(page, {
+          ...options,
+          account,
+          ...(cyRange ? { cyRange } : {})
+        });
+      }
     };
   }
 

@@ -20,7 +20,7 @@ async function pressEscape(context) {
   await owner.keyboard.press('Escape').catch(() => {});
 }
 
-async function dismissKendoCommonMessages(page) {
+export async function dismissKendoCommonMessages(page) {
   const messageContainers = page.locator([
     '.k-animation-container:visible:has(.notification_title:has-text("Common Message"))',
     '.k-window:visible:has(.notification_title:has-text("Common Message"))'
@@ -308,10 +308,14 @@ export async function clickSearch(page) {
   await dismissKendoCommonMessages(page);
 
   const searchButton = await firstVisible(page, [
+    '#btnEnquiry',
+    '#btnStart',
     'div.btn_right #btnSearch',
     '#btnSearch',
     'button.btn_search:has-text("Search")',
-    'button:has-text("Search")'
+    'button:has-text("Search")',
+    'button:has-text("Start")',
+    'button:has-text("Enquiry")'
   ], 30000);
 
   await clickAndWait(page, searchButton, 30000);

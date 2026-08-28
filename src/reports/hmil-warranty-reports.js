@@ -650,6 +650,20 @@ async function runWarrantyClaimListReport(page, { account, mode, report, dealerC
       remainingMonths: monthlyChunks.length,
       nextRange: `${monthlyChunks[0].startIso} to ${monthlyChunks[monthlyChunks.length - 1].endIso}`
     });
+  } else {
+    logger.info('Clearing existing Warranty Claim List rows for this login and dealer for a full refresh', {
+      sourceLoginId: account.userId,
+      dealerCode
+    });
+    await withPostgresClient(async client => {
+      const tableName = 'hyundai_warranty_claim_list';
+      await client.query(
+        `DELETE FROM public.${tableName}
+         WHERE lower(trim(source_login_id::text)) = lower(trim($1::text))
+           AND lower(trim(source_dealer_code::text)) = lower(trim($2::text))`,
+        [account.userId, dealerCode]
+      );
+    });
   }
 
   await report.open(page);

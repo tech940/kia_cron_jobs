@@ -5,7 +5,8 @@ function prefixSheetName(account, sheetName) {
   if (!account.sheetPrefix) return sheetName;
 
   const cleaned = String(sheetName)
-    .replace(/^Hyundai\s+/i, '')
+    .replace(/^Hyundai[\s_]+/i, '')
+    .replace(/^hyundai_/i, '')
     .replace(/^trust_package$/i, 'Trust Package')
     .trim();
 
@@ -170,6 +171,21 @@ function hmilBookingProfile() {
   };
 }
 
+function amPlatinumHistoricalProfile() {
+  const profile = amPlatinumProfile();
+  return {
+    ...profile,
+    id: 'am-platinum-historical',
+    displayName: 'AM Platinum Historical',
+    userId: config.amPlatinumHistoricalUserId || 'MIS12345',
+    password: config.amPlatinumHistoricalPassword || config.amPlatinumPassword,
+    userIdEnvName: 'AM_PLATINUM_HISTORICAL_USER_ID',
+    passwordEnvName: 'AM_PLATINUM_HISTORICAL_PASSWORD',
+    sessionStatePath: config.amPlatinumHistoricalSessionStatePath,
+    dealerCodes: ['N5211', 'N6828']
+  };
+}
+
 export function createGdmsAccountProfile(accountId = 'hmil') {
   if (accountId === 'hmil-booking') {
     return hmilBookingProfile();
@@ -177,6 +193,10 @@ export function createGdmsAccountProfile(accountId = 'hmil') {
 
   if (accountId === 'am-platinum') {
     return amPlatinumProfile();
+  }
+
+  if (accountId === 'am-platinum-historical') {
+    return amPlatinumHistoricalProfile();
   }
 
   if (accountId === 'hmil') {

@@ -34,7 +34,11 @@ function chunkFileName(chunk) {
   return `hyundai_purchase_report_${start}_to_${end}`;
 }
 
-export function getHyundaiPurchaseReportChunks(today = new Date()) {
+export function getHyundaiPurchaseReportChunks(today = new Date(), options = {}) {
+  if (options.startDate && options.endDate) {
+    return getThirtyDayChunks(parseIsoLocalDate(options.startDate), parseIsoLocalDate(options.endDate));
+  }
+
   const overrideRange = getReportDateOverrideRange();
   if (overrideRange) {
     return getThirtyDayChunks(overrideRange.startDate, overrideRange.endDate);
@@ -98,13 +102,13 @@ async function applyHyundaiPurchaseReportChunk(reportContext, chunk) {
   await waitForKendoGridIdle(reportContext, { timeout: 120000 });
 }
 
-export async function downloadHyundaiPurchaseReport(page, { dealerCode = 'active', account = null } = {}) {
-  logger.info('Hyundai Purchase Report started', { dealerCode });
+export async function downloadHyundaiPurchaseReport(page, { dealerCode = 'active', account = null, startDate = null, endDate = null } = {}) {
+  logger.info('Hyundai Purchase Report started', { dealerCode, startDate, endDate });
   await openHmilPurchaseReport(page);
   const reportContext = await resolveHyundaiPurchaseReportContext(page);
 
   const today = new Date();
-  const chunks = getHyundaiPurchaseReportChunks(today);
+  const chunks = getHyundaiPurchaseReportChunks(today, { startDate, endDate });
   const runDate = toIsoDate(today);
   const reportChunksDir = account?.reportChunksDir || config.reportChunksDir;
   const chunkDir = path.join(reportChunksDir, 'hyundai-purchase-report', dealerCode, runDate);
@@ -166,7 +170,7 @@ export async function downloadHyundaiPurchaseReport(page, { dealerCode = 'active
     return {
       name: 'Hyundai Purchase Report',
       id: 'hyundai-purchase-report',
-      sheetName: 'hyundai_purchase_report',
+      sheetName: account ? account.sheetName('hyundai_purchase_report') : 'hyundai_purchase_report',
       dealerCode,
       rowCount: 0
     };
@@ -175,9 +179,10 @@ export async function downloadHyundaiPurchaseReport(page, { dealerCode = 'active
   const merged = await mergeExcelFiles(exportFiles);
   const enrichedDataset = addSourceDealerCodeToDataset(merged, dealerCode);
 
+  const targetSheetName = account ? account.sheetName('hyundai_purchase_report') : 'hyundai_purchase_report';
   const dbResult = await saveReportSheetToSupabase({
-    brand: 'hyundai',
-    sheetName: 'hyundai_purchase_report',
+    brand: account?.brand || 'hyundai',
+    sheetName: targetSheetName,
     headers: enrichedDataset.headers,
     rows: enrichedDataset.rows
   });
@@ -187,7 +192,7 @@ export async function downloadHyundaiPurchaseReport(page, { dealerCode = 'active
   return {
     name: 'Hyundai Purchase Report',
     id: 'hyundai-purchase-report',
-    sheetName: 'hyundai_purchase_report',
+    sheetName: targetSheetName,
     dealerCode,
     rowCount: enrichedDataset.rows.length,
     dbResult

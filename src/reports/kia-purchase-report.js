@@ -15,7 +15,7 @@ export async function downloadKiaPurchaseReport(page, { dealerCode = 'active', m
     pageSize: config.kiaPurchaseReportPageSize,
     postSearchDelayMs: config.kiaPurchaseReportPostSearchDelayMs,
     betweenChunksDelayMs: config.kiaPurchaseReportBetweenChunksDelayMs,
-    backfillStartDate: config.kiaPurchaseReportBackfillStartDate,
+    backfillStartDate: null,
     clearTableBeforeSave: false
   });
 }

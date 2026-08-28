@@ -373,17 +373,7 @@ export async function runHmilWarrantyJob(mode = 'scheduled', {
       logger.info('HMIL warranty append mode enabled; keeping existing relational tables', { mode });
     }
 
-    if (!dryRun && reports.some(r => r.id === 'hyundai-warranty-claim-list')) {
-      const selectedLogins = effectiveAccounts
-        .map(account => String(account.userId || '').trim())
-        .filter(Boolean);
 
-      if (selectedLogins.length === createWarrantyScheduledAccounts().length) {
-        await clearHmilWarrantyClaimListTable();
-      } else {
-        await clearHmilWarrantyClaimListRowsByLogins(selectedLogins);
-      }
-    }
 
     const results = await executeHmilWarrantySequence({
       mode,

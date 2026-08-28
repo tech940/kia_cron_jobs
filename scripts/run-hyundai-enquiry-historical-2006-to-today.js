@@ -29,7 +29,22 @@ function flag(name) {
   return hit ? hit.slice(name.length + 3) : null;
 }
 
-const START_DATE = flag('start') || process.env.ENQUIRY_BACKFILL_START_DATE || '2006-01-01';
+function getCurrentMonthStartDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+}
+
+const daysFlag = flag('days');
+let START_DATE = flag('start');
+if (!START_DATE && daysFlag) {
+  const d = new Date(Date.now() - parseInt(daysFlag, 10) * 86400000);
+  START_DATE = toIsoDate(d);
+}
+if (!START_DATE) {
+  START_DATE = getCurrentMonthStartDate();
+}
 const END_DATE_OVERRIDE = flag('end') || process.env.ENQUIRY_BACKFILL_END_DATE || null;
 const RUN_HEADLESS = process.argv.includes('--headless') ||
   process.env.ENQUIRY_BACKFILL_HEADLESS === 'true';

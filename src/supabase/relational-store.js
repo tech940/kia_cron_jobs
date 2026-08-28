@@ -57,30 +57,37 @@ const STRICT_RELATIONAL_BACKFILL_ALIASES = {
     no: ['s_no', 'sno', 'sr_no', 'serial_no', 'sl_no'],
     r_o_no: ['ro_no'],
     r_o_date: ['ro_date'],
-    r_o_status: ['status', 'new_r_o_status'],
-    svc_adv: ['service_adv'],
+    r_o_status: ['status'],
+    new_r_o_status: ['new_r_o_status'],
+    svc_adv: ['service_adv', 'service_adv_'],
     tech_name: ['man_tech', 'main_technician'],
     special_message: ['special_msg'],
-    ro_source: ['source_of_ro'],
-    dlr_no: ['dealer', 'dealer_code', 'source_dealer_code', 'sale_dealer_code']
+    ro_source: ['source_of_ro', 'source_type'],
+    dlr_no: ['dealer', 'dealer_code', 'source_dealer_code', 'sale_dealer_code'],
+    main_dlr_name: ['dealer_name'],
+    total_amt: ['total'],
+    ro_remarks: ['ro_remaks']
   },
   am_platinum_repair_order_list: {
     no: ['s_no', 'sno', 'sr_no', 'serial_no', 'sl_no'],
     r_o_no: ['ro_no'],
     r_o_date: ['ro_date'],
-    r_o_status: ['status', 'new_r_o_status'],
-    svc_adv: ['service_adv'],
+    r_o_status: ['status'],
+    new_r_o_status: ['new_r_o_status'],
+    svc_adv: ['service_adv', 'service_adv_'],
     tech_name: ['man_tech', 'main_technician'],
     special_message: ['special_msg'],
-    ro_source: ['source_of_ro'],
-    dlr_no: ['dealer', 'dealer_code', 'source_dealer_code', 'sale_dealer_code']
+    ro_source: ['source_of_ro', 'source_type'],
+    dlr_no: ['dealer', 'dealer_code', 'source_dealer_code', 'sale_dealer_code'],
+    main_dlr_name: ['dealer_name'],
+    total_amt: ['total'],
+    ro_remarks: ['ro_remaks']
   }
 };
 
-const RUNTIME_DDL_DISABLED_TABLES = new Set([
-  'hyundai_repair_order_list',
-  'am_platinum_repair_order_list'
-]);
+// Repair order tables are no longer DDL-locked so that new portal columns
+// (r_o_date_time, labour_amt, zone, region, etc.) are auto-added when encountered.
+const RUNTIME_DDL_DISABLED_TABLES = new Set([]);
 
 function normalizeSqlName(value, fallback = 'column') {
   const normalized = String(value ?? '')
@@ -125,12 +132,24 @@ function headerLooksDate(header) {
     normalized === 'report_period_end' ||
     normalized.endsWith('_period_start') ||
     normalized.endsWith('_period_end') ||
-    normalized.includes('closing_date') ||
+    // closing_date_time is a datetime string, NOT a bare date — skip it
     normalized.includes('uploaded_at');
 }
 
 function isForcedTextColumn(columnName) {
+  // Datetime/time columns in repair order reports hold full datetime strings
+  // like '06/06/2026 13:08:09' — keep them as text to avoid truncation.
+  const isDateTimeOrTimeColumn =
+    columnName === 'r_o_date_time' ||
+    columnName === 'gate_pass_time' ||
+    columnName === 'promise_date_time' ||
+    columnName === 'revised_promise_date_time' ||
+    columnName === 'closing_date_time' ||
+    columnName.endsWith('_time') ||
+    columnName.endsWith('_date_time');
+
   return (
+    isDateTimeOrTimeColumn ||
     columnName === 'sac_hsn' ||
     columnName === 'hsn' ||
     columnName.endsWith('_hsn') ||
@@ -482,30 +501,59 @@ async function reconcileExistingColumnTypes(client, tableName, columns) {
     if (!currentType || currentType === 'text') continue;
 
     if (column.type === 'text') {
-      await client.query(`
-        alter table ${table}
-        alter column ${quoteIdentifier(column.name)} type text
-        using ${quoteIdentifier(column.name)}::text
-      `);
-      logger.info('Reconciled relational column to text', {
-        tableName,
-        column: column.name,
-        previousType: currentType
-      });
+      try {
+        await client.query(`
+          alter table ${table}
+          alter column ${quoteIdentifier(column.name)} type text
+          using ${quoteIdentifier(column.name)}::text
+        `);
+        logger.info('Reconciled relational column to text', {
+          tableName,
+          column: column.name,
+          previousType: currentType
+        });
+      } catch (err) {
+        if (err.message.includes('used by a view or rule')) {
+          logger.warn('Skipped column reconciliation to text because it is used by a view or rule', {
+            tableName,
+            column: column.name,
+            currentType
+          });
+          if (currentType === 'date' || currentType.includes('timestamp')) {
+            column.type = 'date';
+          } else if (currentType === 'numeric' || currentType.includes('int') || currentType.includes('double') || currentType.includes('float')) {
+            column.type = 'numeric';
+          }
+        } else {
+          throw err;
+        }
+      }
       continue;
     }
 
     if (column.type === 'date' && (currentType === 'numeric' || currentType === 'double precision' || currentType === 'integer')) {
-      await client.query(`
-        alter table ${table}
-        alter column ${quoteIdentifier(column.name)} type date
-        using nullif(${quoteIdentifier(column.name)}::text, '')::date
-      `);
-      logger.info('Reconciled relational column to date', {
-        tableName,
-        column: column.name,
-        previousType: currentType
-      });
+      try {
+        await client.query(`
+          alter table ${table}
+          alter column ${quoteIdentifier(column.name)} type date
+          using nullif(${quoteIdentifier(column.name)}::text, '')::date
+        `);
+        logger.info('Reconciled relational column to date', {
+          tableName,
+          column: column.name,
+          previousType: currentType
+        });
+      } catch (err) {
+        if (err.message.includes('used by a view or rule')) {
+          logger.warn('Skipped column reconciliation to date because it is used by a view or rule', {
+            tableName,
+            column: column.name,
+            currentType
+          });
+        } else {
+          throw err;
+        }
+      }
     }
   }
 }
@@ -596,15 +644,26 @@ async function pruneUnexpectedColumns(client, tableName) {
   if (!removableColumns.length) return;
 
   const table = `public.${quoteIdentifier(tableName)}`;
-  await client.query(`
-    alter table ${table}
-    ${removableColumns.map(columnName => `drop column if exists ${quoteIdentifier(columnName)}`).join(',\n    ')}
-  `);
-
-  logger.info('Pruned unexpected relational columns', {
-    tableName,
-    removedColumns: removableColumns
-  });
+  try {
+    await client.query(`
+      alter table ${table}
+      ${removableColumns.map(columnName => `drop column if exists ${quoteIdentifier(columnName)}`).join(',\n    ')}
+    `);
+    logger.info('Pruned unexpected relational columns', {
+      tableName,
+      removedColumns: removableColumns
+    });
+  } catch (err) {
+    if (err.message.includes('used by a view or rule')) {
+      logger.warn('Skipped pruning unexpected columns because some are used by a view or rule', {
+        tableName,
+        removableColumns,
+        err: err.message
+      });
+    } else {
+      throw err;
+    }
+  }
 }
 
 async function assertReportTableReady(client, tableName, columns, { usesBusinessKey = false, usesExactRowDedupe = false } = {}) {
@@ -636,11 +695,6 @@ async function assertReportTableReady(client, tableName, columns, { usesBusiness
 }
 
 async function ensureReportTable(client, tableName, columns) {
-  const signature = `${tableName}:${columns.map(column => `${column.name}:${column.type}`).join('|')}`;
-  if (ensuredTableSignatures.has(signature)) {
-    return;
-  }
-  const table = `public.${quoteIdentifier(tableName)}`;
   const usesExactRowDedupe = tableRequiresExactRowDedupe(tableName);
   const usesBusinessKey = WARRANTY_TABLES.has(tableName);
 
@@ -649,9 +703,17 @@ async function ensureReportTable(client, tableName, columns) {
       usesBusinessKey,
       usesExactRowDedupe
     });
-    ensuredTableSignatures.add(signature);
+    await reconcileExistingColumnTypes(client, tableName, columns);
     return;
   }
+
+  const signature = `${tableName}:${columns.map(column => `${column.name}:${column.type}`).join('|')}`;
+  if (ensuredTableSignatures.has(signature)) {
+    await reconcileExistingColumnTypes(client, tableName, columns);
+    return;
+  }
+
+  const table = `public.${quoteIdentifier(tableName)}`;
 
   const columnSql = columns
     .map(column => `${quoteIdentifier(column.name)} ${columnSqlType(column.type)}`)
@@ -675,7 +737,7 @@ async function ensureReportTable(client, tableName, columns) {
 
   await reconcileExistingColumnTypes(client, tableName, columns);
   await ensureIdColumnDefault(client, tableName);
-  await backfillStrictCanonicalColumns(client, tableName);
+  // await backfillStrictCanonicalColumns(client, tableName);
   await pruneUnexpectedColumns(client, tableName);
 
   await client.query(`
@@ -1115,55 +1177,55 @@ export async function saveReportSheetToRelationalTable({
   const uploadedAt = new Date().toISOString();
   const startedAt = Date.now();
   const effectiveBatchSize = Math.max(1, Math.min(batchSize, Math.floor(60000 / (columns.length + 2))));
-  const seenBusinessKeys = new Set();
-  const seenFullRowHashes = new Set();
-  const uniqueRows = [];
-  let skippedDuplicateIncomingRows = 0;
-  const usesExactRowDedupe = tableRequiresExactRowDedupe(tableName);
-
-  for (const row of rows) {
-    const normalizedValues = columns.map(column => normalizeValue(row[column.header], column));
-    const rowHash = rowSignatureFromNormalizedValues(columns, normalizedValues, tableName);
-    const fullRowHash = usesExactRowDedupe
-      ? buildFullRowHash(tableName, columns, normalizedValues)
-      : null;
-    const businessIdentityKey = WARRANTY_TABLES.has(tableName)
-      ? buildBusinessIdentityKey(tableName, columns, normalizedValues)
-      : null;
-
-    if (usesExactRowDedupe) {
-      if (!isEmpty(fullRowHash) && seenFullRowHashes.has(fullRowHash)) {
-        skippedDuplicateIncomingRows += 1;
-        continue;
-      }
-      if (!isEmpty(fullRowHash)) {
-        seenFullRowHashes.add(fullRowHash);
-      }
-    } else if (businessIdentityKey) {
-      if (seenBusinessKeys.has(businessIdentityKey)) {
-        skippedDuplicateIncomingRows += 1;
-        continue;
-      }
-      seenBusinessKeys.add(businessIdentityKey);
-    } else if (seenFullRowHashes.has(rowHash)) {
-      skippedDuplicateIncomingRows += 1;
-      continue;
-    } else {
-      seenFullRowHashes.add(rowHash);
-    }
-
-    uniqueRows.push(row);
-  }
-  const stats = {
-    invalidDates: 0,
-    invalidNumerics: 0,
-    invalidDateColumns: {},
-    invalidNumericColumns: {}
-  };
-
   return withPostgresClient(async client => {
     await client.query('SET statement_timeout = 0');
     await ensureReportTable(client, tableName, columns);
+    const usesExactRowDedupe = tableRequiresExactRowDedupe(tableName);
+    const seenBusinessKeys = new Set();
+    const seenFullRowHashes = new Set();
+    const uniqueRows = [];
+    let skippedDuplicateIncomingRows = 0;
+
+    for (const row of rows) {
+      const normalizedValues = columns.map(column => normalizeValue(row[column.header], column));
+      const rowHash = rowSignatureFromNormalizedValues(columns, normalizedValues, tableName);
+      const fullRowHash = usesExactRowDedupe
+        ? buildFullRowHash(tableName, columns, normalizedValues)
+        : null;
+      const businessIdentityKey = WARRANTY_TABLES.has(tableName)
+        ? buildBusinessIdentityKey(tableName, columns, normalizedValues)
+        : null;
+
+      if (usesExactRowDedupe) {
+        if (!isEmpty(fullRowHash) && seenFullRowHashes.has(fullRowHash)) {
+          skippedDuplicateIncomingRows += 1;
+          continue;
+        }
+        if (!isEmpty(fullRowHash)) {
+          seenFullRowHashes.add(fullRowHash);
+        }
+      } else if (businessIdentityKey) {
+        if (seenBusinessKeys.has(businessIdentityKey)) {
+          skippedDuplicateIncomingRows += 1;
+          continue;
+        }
+        seenBusinessKeys.add(businessIdentityKey);
+      } else if (seenFullRowHashes.has(rowHash)) {
+        skippedDuplicateIncomingRows += 1;
+        continue;
+      } else {
+        seenFullRowHashes.add(rowHash);
+      }
+
+      uniqueRows.push(row);
+    }
+    const stats = {
+      invalidDates: 0,
+      invalidNumerics: 0,
+      invalidDateColumns: {},
+      invalidNumericColumns: {}
+    };
+
     const backfilledFullRowHashCount = await backfillExactRowHashes(client, tableName, columns);
     const removedExistingExactDuplicateCount = await removeExistingExactRowDuplicates(client, tableName);
     await ensureExactRowUniqueIndex(client, tableName);

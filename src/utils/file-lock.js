@@ -34,6 +34,21 @@ async function removeStaleLock(lockDir, staleMs, label) {
       return true;
     }
 
+    const acquiredAtMs = meta.acquiredAt ? new Date(meta.acquiredAt).getTime() : 0;
+    const lockAgeMs = acquiredAtMs > 0 ? (Date.now() - acquiredAtMs) : (Date.now() - stat.mtimeMs);
+    if (lockAgeMs >= staleMs) {
+      logger.warn('Removing stale filesystem lock held by long-running process', {
+        label,
+        lockDir,
+        pid: lockPid,
+        lockAgeMs,
+        staleMs,
+        acquiredAt: meta.acquiredAt
+      });
+      await fs.rm(lockDir, { recursive: true, force: true });
+      return true;
+    }
+
     if (lockProcessAlive) {
       return false;
     }

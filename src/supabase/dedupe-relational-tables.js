@@ -38,6 +38,7 @@ const REPORT_TABLES = [
   'kia_sales_report',
   'kia_enquiry_report',
   'kia_accessories_counter_sales_report',
+  'kia_calim_management',
   'psf_yearly',
   'ew_report',
   'mcp_report',

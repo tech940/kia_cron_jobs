@@ -69,6 +69,21 @@ export function getRollingTwoMonthRange(today = new Date()) {
   };
 }
 
+export function getRollingTwelveMonthRange(today = new Date()) {
+  const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startDate = new Date(endDate);
+  startDate.setMonth(startDate.getMonth() - 12);
+
+  return {
+    startDate,
+    endDate,
+    startPortal: formatDateForPortal(startDate),
+    endPortal: formatDateForPortal(endDate),
+    startIso: toIsoDate(startDate),
+    endIso: toIsoDate(endDate)
+  };
+}
+
 export function getCurrentMonthToDateRange(today = new Date()) {
   const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);

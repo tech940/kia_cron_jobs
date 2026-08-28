@@ -261,7 +261,8 @@ module.exports = {
       error_file: './logs/pm2-kia-cron-scheduler-error.log',
       env: {
         NODE_ENV: 'production',
-        LOG_SERVICE_NAME: 'kia-cron-scheduler'
+        LOG_SERVICE_NAME: 'kia-cron-scheduler',
+        KIA_STOCK_MANAGEMENT_CRON_SCHEDULE: '0 10-18 * * *'
       }
     },
     {
@@ -331,7 +332,7 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       autorestart: false,
-      cron_restart: '0 22 * * *',
+      cron_restart: '50 19 * * *',
       watch: false,
       out_file: './logs/pm2-clean-memory-out.log',
       error_file: './logs/pm2-clean-memory-error.log',
@@ -350,7 +351,7 @@ module.exports = {
     {
       name: 'platinum-sales-report',
       script: './scripts/run-platinum-sales-report.js',
-      args: '--start=2025-01-01 --headless',
+      args: '--days=30 --headless',
       instances: 1,
       exec_mode: 'fork',
       autorestart: false,
@@ -358,6 +359,22 @@ module.exports = {
       watch: false,
       out_file: './logs/pm2-platinum-sales-report-out.log',
       error_file: './logs/pm2-platinum-sales-report-error.log',
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Kolkata'
+      }
+    },
+    {
+      name: 'hyundai-sales-report',
+      script: './scripts/run-hyundai-sales-historical-all-dealers.js',
+      args: '--days=30 --headless',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      cron_restart: '20 19 * * *',
+      watch: false,
+      out_file: './logs/pm2-hyundai-sales-report-out.log',
+      error_file: './logs/pm2-hyundai-sales-report-error.log',
       env: {
         NODE_ENV: 'production',
         TZ: 'Asia/Kolkata'
@@ -422,6 +439,54 @@ module.exports = {
         TZ: 'Asia/Kolkata'
       }
     },
+    {
+      name: 'hyundai-enquiry-report',
+      script: './scripts/run-hyundai-enquiry-historical-2006-to-today.js',
+      args: '--headless',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      cron_restart: '30 17 * * *',
+      watch: false,
+      out_file: './logs/pm2-hyundai-enquiry-report-out.log',
+      error_file: './logs/pm2-hyundai-enquiry-report-error.log',
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Kolkata'
+      }
+    },
+    {
+      name: 'platinum-enquiry-report',
+      script: './scripts/run-platinum-enquiry-report.js',
+      args: '--headless',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      cron_restart: '40 17 * * *',
+      watch: false,
+      out_file: './logs/pm2-platinum-enquiry-report-out.log',
+      error_file: './logs/pm2-platinum-enquiry-report-error.log',
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Kolkata'
+      }
+    },
+    {
+      name: 'platinum-purchase-report',
+      script: './scripts/run-platinum-purchase-report.js',
+      args: '--headless',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      cron_restart: '50 17 * * *',
+      watch: false,
+      out_file: './logs/pm2-platinum-purchase-report-out.log',
+      error_file: './logs/pm2-platinum-purchase-report-error.log',
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Kolkata'
+      }
+    },
     // HIIB insurance portal (ha.hiib.in), daily at 18:10 local time.
     //
     // One-shot scripts, not long-lived schedulers: autorestart:false + cron_restart is the
@@ -431,17 +496,47 @@ module.exports = {
     // The two accounts are safe to run at the same minute — createHiibAccountProfile gives
     // each its own session state, download dir and chunk dir.
     //
-    // --days=90 keeps the nightly run to a rolling window. Without it the script defaults to
-    // HYUNDAI_INSURANCE_REPORT_BACKFILL_START_DATE (2024-04-01) and would re-scrape the
-    // entire backfill every night. Full history is loaded by running the script by hand.
+    // --days=30 keeps the nightly run to a rolling month-wise window.
     {
-      name: 'hiib-insurance-hyundai',
-      script: './scripts/run-hyundai-insurance-report-once.js',
-      args: '--account=hiib --days=90 --headless',
+      name: 'hyundai-purchase-report',
+      script: './scripts/run-hyundai-purchase-report.js',
+      args: '--headless',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      cron_restart: '00 18 * * *',
+      watch: false,
+      out_file: './logs/pm2-hyundai-purchase-report-out.log',
+      error_file: './logs/pm2-hyundai-purchase-report-error.log',
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Kolkata'
+      }
+    },
+    {
+      name: 'hyundai-receipt-report',
+      script: './scripts/run-hyundai-receipt-report.js',
+      args: '--headless',
       instances: 1,
       exec_mode: 'fork',
       autorestart: false,
       cron_restart: '10 18 * * *',
+      watch: false,
+      out_file: './logs/pm2-hyundai-receipt-report-out.log',
+      error_file: './logs/pm2-hyundai-receipt-report-error.log',
+      env: {
+        NODE_ENV: 'production',
+        TZ: 'Asia/Kolkata'
+      }
+    },
+    {
+      name: 'hiib-insurance-hyundai',
+      script: './scripts/run-hyundai-insurance-report-once.js',
+      args: '--account=hiib --days=30 --headless',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: false,
+      cron_restart: '20 18 * * *',
       watch: false,
       out_file: './logs/pm2-hiib-insurance-hyundai-out.log',
       error_file: './logs/pm2-hiib-insurance-hyundai-error.log',
@@ -453,11 +548,11 @@ module.exports = {
     {
       name: 'hiib-insurance-platinum',
       script: './scripts/run-hyundai-insurance-report-once.js',
-      args: '--account=platinum --days=90 --headless',
+      args: '--account=platinum --days=30 --headless',
       instances: 1,
       exec_mode: 'fork',
       autorestart: false,
-      cron_restart: '10 18 * * *',
+      cron_restart: '20 18 * * *',
       watch: false,
       out_file: './logs/pm2-hiib-insurance-platinum-out.log',
       error_file: './logs/pm2-hiib-insurance-platinum-error.log',

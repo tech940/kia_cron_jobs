@@ -482,8 +482,8 @@ export async function changeActiveDealerForDms(page, dealerCode, {
   }
 
   if (isHmilDms(homeUrl)) {
+    const hmilHomeUrl = `${expectedOrigin}/cmm/cmmd/selectHome.dms`;
     if (!isHmilHomeOrDealerChangeUrl(currentUrl)) {
-      const hmilHomeUrl = `${expectedOrigin}/cmm/cmmd/selectHome.dms`;
       logger.info('Resetting HMIL session to home before dealer change', {
         fromUrl: currentUrl,
         hmilHomeUrl
@@ -499,7 +499,15 @@ export async function changeActiveDealerForDms(page, dealerCode, {
         dealerCode: normalizedDealerCode,
         error: directError.message
       });
-      await openDealerChangePage(page);
+      await openDealerChangePage(page).catch(async error => {
+        logger.warn(`HMIL Dealer Change navigation failed from current page; retrying from home`, {
+          dealerCode: normalizedDealerCode,
+          currentUrl: page.url(),
+          error: error.message
+        });
+        await page.goto(hmilHomeUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await openDealerChangePage(page);
+      });
     }
   } else {
     try {
@@ -561,6 +569,34 @@ export async function changeActiveDealerForDms(page, dealerCode, {
     logger.info('Dealer Change field is empty; proceeding with dealer search popup', {
       dealerCode: normalizedDealerCode
     });
+  }
+
+  // Check if target dealer matches the primary/super dealer code (e.g. N5216)
+  // which is typically not listed in the additional dealers popup search.
+  const primaryDlrCd = await changeContext.locator('#curSprDlrCd').first().inputValue().catch(() => '');
+  if (primaryDlrCd && primaryDlrCd.trim().toUpperCase() === normalizedDealerCode) {
+    logger.info(`Target dealer matches primary/super dealer code ${normalizedDealerCode}; setting fields directly`, {
+      dealerCode: normalizedDealerCode
+    });
+    await changeContext.evaluate((dlrCd) => {
+      if (typeof window.$ === 'function') {
+        $("#chgDlrCd").val(dlrCd);
+        $("#chgDlrNo").val("");
+        $("#chgDlrNm").val("");
+      } else {
+        const cdInput = document.querySelector('#chgDlrCd');
+        const noInput = document.querySelector('#chgDlrNo');
+        const nmInput = document.querySelector('#chgDlrNm');
+        if (cdInput) cdInput.value = dlrCd;
+        if (noInput) noInput.value = "";
+        if (nmInput) nmInput.value = "";
+      }
+    }, normalizedDealerCode);
+
+    await waitForDealerCode(changeContext, normalizedDealerCode);
+    await confirmDealerChange(changeContext, normalizedDealerCode);
+    logger.info(`Active ${systemLabel} dealer changed to primary/super dealer`, { dealerCode: normalizedDealerCode });
+    return;
   }
 
   const searchLink = await firstVisible(changeContext, [

@@ -510,3 +510,46 @@ export async function openDealerVehicleStockMgtReport(page) {
     label: 'Dealer Vehicle Stock Mgt page'
   });
 }
+
+export async function openKiaClaimManagementReport(page) {
+  logger.info('Navigating to Sales > Common(KIN) > Claims Mgt');
+
+  try {
+    const salesMenu = page.locator('li.nav_sal').first();
+    await salesMenu.waitFor({ state: 'visible', timeout: 10000 });
+
+    const commonKinLink = page
+      .locator('li.nav_sal a')
+      .filter({ hasText: /^Common\(KIN\)$/ })
+      .first();
+
+    const reportLink = page.locator([
+      'a.menuItem[data-viewid="VIEW-D-01179"]',
+      'a.menuItem[data-url="/sal/sali/selectClaimsListMain.dms"]',
+      'a.menuItem[data-title="Claims Mgt"]',
+      'a.menuItem:has-text("Claims Mgt")'
+    ].join(',')).first();
+
+    const salesMenuButton = page.locator('li.nav_sal > a').first();
+    await ensureMenuTargetVisible(salesMenuButton, commonKinLink, 'Sales sidebar menu');
+
+    if (!await reportLink.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await clickLocator(commonKinLink, 'Common(KIN) menu');
+    }
+
+    if (await reportLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await clickLocator(reportLink, 'Claims Mgt page', 15000);
+      logger.info('Claims Mgt menu item clicked');
+      return;
+    }
+  } catch (err) {
+    logger.warn(`Menu navigation to Claims Mgt failed: ${err.message}. Trying direct URL fallback...`);
+  }
+
+  logger.info('Opening Claims Mgt via direct URL fallback');
+  await page.goto('https://dms.kiaindia.net/sal/sali/selectClaimsListMain.dms', {
+    waitUntil: 'domcontentloaded',
+    timeout: 30000
+  });
+}
+

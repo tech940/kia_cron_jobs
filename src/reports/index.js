@@ -11,6 +11,7 @@ import { downloadKiaAccessoriesCounterSalesReport } from './kia-accessories-coun
 import { downloadKiaPurchaseReport } from './kia-purchase-report.js';
 import { downloadKiaReceiptReport } from './kia-receipt-report.js';
 import { downloadKiaStockManagementReport } from './kia-stock-management.js';
+import { downloadKiaClaimManagementReport } from './kia-claim-management.js';
 import { downloadPsfYearlyReport } from './psf-yearly.js';
 import { downloadEwReport } from './ew-report.js';
 import { downloadMcpReport } from './mcp-report.js';
@@ -108,6 +109,12 @@ export const reportDefinitions = [
     run: downloadKiaStockManagementReport
   },
   {
+    id: 'kia-claim-management',
+    name: 'Claims Mgt',
+    requiresKiaDms: true,
+    run: downloadKiaClaimManagementReport
+  },
+  {
     id: 'psf-yearly',
     name: 'PSF Yearly',
     requiresKiaDms: true,
@@ -167,6 +174,7 @@ const regularReportDefinitions = defaultReportDefinitions.filter(report =>
     'kia-purchase-report',
     'kia-receipt-report',
     'kia-stock-management',
+    'kia-claim-management',
     'rsa-report',
     'ro-billing'
   ].includes(report.id)
@@ -192,7 +200,9 @@ const MODE_REPORT_IDS = new Map([
   ['kia-purchase-report-historical', 'kia-purchase-report'],
   ['kia-receipt-report', 'kia-receipt-report'],
   ['kia-receipt-report-historical', 'kia-receipt-report'],
-  ['kia-stock-management', 'kia-stock-management']
+  ['kia-stock-management', 'kia-stock-management'],
+  ['kia-claim-management', 'kia-claim-management'],
+  ['kia-claim-management-historical', 'kia-claim-management']
 ]);
 
 export function getSelectedReports({ mode = 'configured' } = {}) {

@@ -9,7 +9,6 @@ import {
   getCurrentMonthToDateRange,
   getReportDateOverrideRange,
   getThirtyDayChunks,
-  parseIsoLocalDate,
   toIsoDate
 } from '../utils/date-range.js';
 import { logger } from '../utils/logger.js';
@@ -23,9 +22,10 @@ import {
 import { addSourceDealerCodeToDataset } from './report-metadata.js';
 import { clickSearch, fillDate, getInputValue } from './report-actions.js';
 
-function FiveYearsAgoDate() {
+function currentMonthStartDate() {
   const date = new Date();
-  date.setFullYear(date.getFullYear() - 5);
+  date.setDate(1);
+  date.setHours(0, 0, 0, 0);
   return date;
 }
 
@@ -35,33 +35,34 @@ function chunkFileName(chunk) {
   return `hyundai_sales_report_${start}_to_${end}`;
 }
 
+// Daily scheduler: only current month. Historical backfill must be run manually via
+// run-hyundai-sales-historical-all-dealers.js with an explicit --from/--to range.
 export function getHyundaiSalesReportChunks(today = new Date()) {
   const overrideRange = getReportDateOverrideRange();
   if (overrideRange) {
     return getThirtyDayChunks(overrideRange.startDate, overrideRange.endDate);
   }
 
-  const startDateStr = config.hyundaiSalesReportBackfillStartDate || config.historicalBackfillStartDate;
-  const startDate = startDateStr ? parseIsoLocalDate(startDateStr) : FiveYearsAgoDate();
-
+  // Always run current month only — never the full historical backfill from the daily cron.
+  const startDate = currentMonthStartDate();
   return getThirtyDayChunks(startDate, today);
 }
 
-async function selectConfirmDateRadio(context) {
+async function selectInvoiceDateRadio(context) {
   const radio = context.locator([
-    '#confirmDate',
-    '#confirmdate',
-    'input[type="radio"][value="confirmDate"]',
-    'input[type="radio"][name="radio"][value="confirmDate"]',
-    'label:has-text("Confirm Date") input[type="radio"]',
-    'label:has-text("Confirm date") input[type="radio"]'
+    '#invoiceDate',
+    '#invoicedate',
+    'input[type="radio"][value="invoiceDate"]',
+    'input[type="radio"][name="radio"][value="invoiceDate"]',
+    'label:has-text("Invoice Date") input[type="radio"]',
+    'label:has-text("Invoice date") input[type="radio"]'
   ].join(',')).first();
 
   await radio.waitFor({ state: 'visible', timeout: 30000 });
   await radio.check({ force: true }).catch(async () => {
     await radio.click({ force: true });
   });
-  logger.info('Hyundai Sales Report confirmDate radio selected');
+  logger.info('Hyundai Sales Report invoiceDate radio selected');
 }
 
 async function resolveHyundaiSalesReportContext(page) {
@@ -81,7 +82,7 @@ async function applyHyundaiSalesReportChunk(reportContext, chunk) {
     endDate: chunk.endPortal
   });
 
-  await selectConfirmDateRadio(reportContext);
+  await selectInvoiceDateRadio(reportContext);
 
   await fillDate(reportContext, '#sDateToDate', chunk.endPortal);
   await fillDate(reportContext, '#sDateFromDate', chunk.startPortal);

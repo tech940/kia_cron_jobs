@@ -1,21 +1,21 @@
-// Script to run Hyundai Sales Report with visible browser (HEADLESS=false)
-process.env.HEADLESS = 'false';
-
 import { loginToHmilDms } from '../src/auth/hmil-login.js';
 import { createGdmsAccountProfile } from '../src/accounts/gdms-account-profile.js';
 import { downloadHyundaiSalesReport } from '../src/reports/hyundai-sales-report.js';
 import { logger } from '../src/utils/logger.js';
+import { config } from '../src/config.js';
+
+const isHeadlessArg = process.argv.includes('--headless') || process.env.HEADLESS === 'true';
+process.env.HEADLESS = isHeadlessArg ? 'true' : (config.headless ? 'true' : 'false');
 
 async function main() {
   const account = createGdmsAccountProfile('hmil-secondary');
-  account.headless = false;
-  logger.info('Starting Hyundai Sales Report manual run...', {
+  account.headless = process.env.HEADLESS === 'true';
+
+  logger.info('Starting Hyundai Sales Report run...', {
     userId: account.userId,
     dealerCodes: account.dealerCodes,
-    headless: false
+    headless: account.headless
   });
-
-
 
   const session = await loginToHmilDms(account);
   try {

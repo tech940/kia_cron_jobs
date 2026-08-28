@@ -40,7 +40,7 @@ async function hasExistingSession(page) {
 }
 
 async function isKiaHomeVisible(page, timeout = 500) {
-  return page.locator('li.nav_ser_mis, li.nav_ser, #gnb').first()
+  return page.locator('li.nav_sal, li.nav_ser_mis, li.nav_ser, li.nav_cmm, #gnb, .gnb').first()
     .isVisible({ timeout })
     .catch(() => false);
 }
@@ -66,7 +66,7 @@ async function waitForOtpInputOrHome(page, timeoutMs) {
 }
 
 async function ensureKiaHome(page) {
-  const homeMenuVisible = await page.locator('li.nav_ser_mis, li.nav_ser, #gnb').first()
+  const homeMenuVisible = await page.locator('li.nav_sal, li.nav_ser_mis, li.nav_ser, li.nav_cmm, #gnb, .gnb').first()
     .waitFor({ state: 'visible', timeout: 30000 })
     .then(() => true)
     .catch(() => false);
@@ -79,16 +79,18 @@ async function ensureKiaHome(page) {
       waitUntil: 'domcontentloaded',
       timeout: config.loginTimeoutMs
     });
-    await page.locator('li.nav_ser_mis, li.nav_ser, #gnb').first()
+    await page.locator('li.nav_sal, li.nav_ser_mis, li.nav_ser, li.nav_cmm, #gnb, .gnb').first()
       .waitFor({ state: 'visible', timeout: config.loginTimeoutMs });
   }
 }
 
-export async function loginToKiaDms() {
+export async function loginToKiaDms(sessionOrOptions = {}) {
   requireSecret('KIA_PASSWORD', config.password);
   logger.info('KIA DMS login started');
 
-  const session = await createBrowserSession();
+  const session = sessionOrOptions.page
+    ? sessionOrOptions
+    : await createBrowserSession(sessionOrOptions);
   const { browser, context, page, hasStorageState } = session;
 
   try {
