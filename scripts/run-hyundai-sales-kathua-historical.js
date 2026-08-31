@@ -109,6 +109,27 @@ function dropGridTotalRows(dataset) {
   return { ...dataset, rows };
 }
 
+function enrichDataset(merged, fallbackDealerCode = 'N5804') {
+  const value = String(fallbackDealerCode || 'N5804').trim().toUpperCase();
+  const headers = [...merged.headers];
+  for (const header of ['source_dealer_code', 'dealer_code']) {
+    if (!headers.includes(header)) {
+      headers.unshift(header);
+    }
+  }
+
+  const rows = merged.rows.map(row => {
+    const existingCode = String(row.dealer_code || row.dealer_code_2 || row.main_dealer_code || '').trim().toUpperCase();
+    return {
+      ...row,
+      source_dealer_code: value,
+      dealer_code: existingCode || value
+    };
+  });
+
+  return { headers, rows };
+}
+
 // ─── Main Execution ─────────────────────────────────────────────────────────
 async function main() {
   console.log('\n===============================================================');
@@ -234,7 +255,7 @@ async function main() {
         let rowCount = 0;
         if (chunkFiles.length) {
           const merged = dropGridTotalRows(await mergeExcelFiles(chunkFiles));
-          const enrichedDataset = addSourceDealerCodeToDataset(merged, DEALER_CODE);
+          const enrichedDataset = enrichDataset(merged, DEALER_CODE);
 
           const dbResult = await saveReportSheetToSupabase({
             brand: 'hyundai',
