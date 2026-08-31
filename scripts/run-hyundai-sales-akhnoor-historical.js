@@ -23,7 +23,7 @@ function getArg(name, defaultValue = null) {
 const USER_ID = getArg('user', 'N570100');
 const PASSWORD = getArg('password', 'Hyundai@01');
 const DEALER_CODE = getArg('dealer', 'N5701').toUpperCase();
-const START_DATE_OVERRIDE = getArg('start', null);
+const START_DATE = getArg('start', '2010-01-01');
 const END_DATE = getArg('end', '2026-06-30');
 const RUN_HEADLESS = process.argv.includes('--headless');
 
@@ -227,37 +227,16 @@ async function main() {
     await reportContext.locator('#sDateToDate').first().waitFor({ state: 'visible', timeout: 30000 });
     console.log('[SUCCESS] Hyundai Sales Report page ready.\n');
 
-    // ─── Detect Default Start Date From Portal ─────────────────────────────
-    let startDateObj = null;
-    let startDateIso = null;
-
-    if (START_DATE_OVERRIDE) {
-      startDateIso = START_DATE_OVERRIDE;
-      startDateObj = parseIsoLocalDate(START_DATE_OVERRIDE);
-      console.log(`[INFO] Using CLI override start date: ${startDateIso}`);
-    } else {
-      const defaultPortalDateVal = await reportContext.locator('#sDateFromDate').first().inputValue().catch(() => '');
-      console.log(`[INFO] Detected default portal start date in input: "${defaultPortalDateVal}"`);
-      startDateObj = parsePortalDate(defaultPortalDateVal);
-      if (startDateObj && !isNaN(startDateObj.getTime())) {
-        startDateIso = toIsoDate(startDateObj);
-        console.log(`[INFO] Start date successfully initialized to: ${startDateIso} (${formatDateForPortal(startDateObj)})`);
-      } else {
-        startDateIso = '2010-01-01';
-        startDateObj = parseIsoLocalDate(startDateIso);
-        console.log(`[WARN] Could not parse default input date; falling back to: ${startDateIso}`);
-      }
-    }
-
+    const startDateObj = parseIsoLocalDate(START_DATE);
     const endDateObj = parseIsoLocalDate(END_DATE);
     const chunks = getThirtyDayChunks(startDateObj, endDateObj);
 
-    console.log(`\n===============================================================`);
-    console.log(`  DATE RANGE   : ${startDateIso}  -->  ${END_DATE}`);
+    console.log(`===============================================================`);
+    console.log(`  DATE RANGE   : ${START_DATE}  -->  ${END_DATE}`);
     console.log(`  TOTAL CHUNKS : ${chunks.length} thirty-day chunk(s)`);
     console.log(`===============================================================\n`);
 
-    const chunkDir = path.join(downloadDir, `chunks_${startDateIso}_to_${END_DATE}`);
+    const chunkDir = path.join(downloadDir, `chunks_${START_DATE}_to_${END_DATE}`);
     await fs.mkdir(chunkDir, { recursive: true });
 
     const markerPath = baseName => path.join(chunkDir, `${baseName}.saved.json`);
