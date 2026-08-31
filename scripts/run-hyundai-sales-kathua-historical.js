@@ -98,13 +98,15 @@ async function applyDateRangeAndSearch(reportContext, chunk) {
 }
 
 function dropGridTotalRows(dataset) {
-  if (!dataset?.rows?.length || !dataset?.headers?.length) return dataset;
-  const nameIndex = dataset.headers.findIndex(h => /customer_name|registration_name|customerid|model/i.test(h));
-  if (nameIndex === -1) return dataset;
-  const targetCol = dataset.headers[nameIndex];
+  if (!dataset?.rows?.length) return dataset;
   const rows = dataset.rows.filter(row => {
-    const val = String(row[targetCol] || '').trim().toUpperCase();
-    return val !== 'TOTAL' && !val.startsWith('TOTAL ');
+    const values = Object.values(row).map(v => String(v ?? '').trim().toUpperCase());
+    const isTotal = values.some(v => v === 'TOTAL' || v.startsWith('TOTAL '));
+    const regName = String(row['Registration Name'] || row['registration_name'] || row['Customer Name'] || row['customer_name'] || '').trim().toUpperCase();
+    if (regName === 'TOTAL' || regName.startsWith('TOTAL')) return false;
+    const invNo = String(row['Invoice No'] || row['invoice_no'] || row['Invoice No.'] || '').trim();
+    if (!invNo && isTotal) return false;
+    return true;
   });
   return { ...dataset, rows };
 }

@@ -129,20 +129,16 @@ async function applyHyundaiSalesReportChunk(reportContext, chunk) {
  * am_platinum_sales_report — silently inflating counts and any SUM over the table.
  */
 function dropGridTotalRows(dataset) {
-  const nameIndex = dataset.headers.findIndex(
-    header => /registration/i.test(String(header ?? '')) && /name/i.test(String(header ?? ''))
-  );
-  if (nameIndex < 0) return dataset;
-
-  const rows = dataset.rows.filter(
-    row => String(row?.[nameIndex] ?? '').trim().toUpperCase() !== 'TOTAL'
-  );
-
-  const dropped = dataset.rows.length - rows.length;
-  if (dropped > 0) {
-    logger.info('Dropped grid TOTAL footer rows before save', { dropped, column: dataset.headers[nameIndex] });
-  }
-
+  if (!dataset?.rows?.length) return dataset;
+  const rows = dataset.rows.filter(row => {
+    const values = Object.values(row).map(v => String(v ?? '').trim().toUpperCase());
+    const isTotal = values.some(v => v === 'TOTAL' || v.startsWith('TOTAL '));
+    const regName = String(row['Registration Name'] || row['registration_name'] || row['Customer Name'] || row['customer_name'] || '').trim().toUpperCase();
+    if (regName === 'TOTAL' || regName.startsWith('TOTAL')) return false;
+    const invNo = String(row['Invoice No'] || row['invoice_no'] || row['Invoice No.'] || '').trim();
+    if (!invNo && isTotal) return false;
+    return true;
+  });
   return { ...dataset, rows };
 }
 
