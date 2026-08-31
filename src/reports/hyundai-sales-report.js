@@ -9,6 +9,7 @@ import {
   getCurrentMonthToDateRange,
   getReportDateOverrideRange,
   getThirtyDayChunks,
+  parseIsoLocalDate,
   toIsoDate
 } from '../utils/date-range.js';
 import { logger } from '../utils/logger.js';
